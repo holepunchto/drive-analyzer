@@ -7,9 +7,14 @@ class DriveAnalyzer extends ReadyResource {
   static META = 0
   static DATA = 1
 
-  constructor (drive) {
+  constructor (drive, opts = {}) {
     super()
     this._drive = drive
+
+    if (opts.ignoreModuleNotFound) {
+      this.ignoreModuleNotFound = opts.ignoreModuleNotFound
+    }
+
     this._meta = new Set()
     this._data = new Set()
   }
@@ -102,7 +107,10 @@ class DriveAnalyzer extends ReadyResource {
 
     for await (const entrypoint of entrypoints.map(e => resolve('/', e))) {
       if (entrypoint && this._isJS(entrypoint)) {
-        await this._analyzeEntrypoint(entrypoint)
+        await this._analyzeEntrypoint(entrypoint).catch(err => {
+          if (this.ignoreModuleNotFound && err.code === 'MODULE_NOT_FOUND') return
+          throw err
+        })
       }
     }
 
