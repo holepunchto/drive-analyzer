@@ -8,7 +8,7 @@ npm i drive-analyzer
 
 ## Usage
 
-```
+```js
 const analyzer = new DriveAnalyzer(drive)
 analyzer.ready()
 const encoded = await analyzer.analyze(['app.js']) // delta encoded warm-up map
