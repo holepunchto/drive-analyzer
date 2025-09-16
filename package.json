@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "bare-path": "^3.0.0",
-    "dependency-stream": "^2.2.3",
+    "pear-shake": "^1.0.2",
     "ready-resource": "^1.1.1",
     "unix-path-resolve": "^1.0.2"
   },

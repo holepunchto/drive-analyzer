@@ -1,4 +1,4 @@
-const DependencyStream = require('dependency-stream')
+const PearShake = require('pear-shake')
 const ReadyResource = require('ready-resource')
 const { extname } = require('bare-path')
 const resolve = require('unix-path-resolve')
@@ -59,9 +59,10 @@ class DriveAnalyzer extends ReadyResource {
   }
 
   async _analyzeEntrypoint (entrypoint) {
-    const dependencyStream = new DependencyStream(this._drive, { entrypoint })
-    for await (const dep of dependencyStream) {
-      const entry = await this._drive.entry(dep.key, { onseq: (seq) => this.capture(seq, this.constructor.META) })
+    const pearShake = new PearShake(this._drive, [entrypoint])
+    const files = await pearShake.run()
+    for (const key of files) {
+      const entry = await this._drive.entry(key, { onseq: (seq) => this.capture(seq, this.constructor.META) })
       const blob = entry.value.blob
       const range = [blob.blockLength, blob.blockOffset]
       this.capture(range)
