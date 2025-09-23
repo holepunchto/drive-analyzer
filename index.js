@@ -2,6 +2,7 @@ const PearShake = require('pear-shake')
 const ReadyResource = require('ready-resource')
 const { extname } = require('bare-path')
 const resolve = require('unix-path-resolve')
+const { dirname } = require('bare-path')
 
 class DriveAnalyzer extends ReadyResource {
   static META = 0
@@ -89,8 +90,14 @@ class DriveAnalyzer extends ReadyResource {
     const expandedEntrypoints = []
     for (const entrypoint of entrypoints) {
       if (this._isHTML(entrypoint)) {
-        const html = await this._drive.get(resolve('/', entrypoint))
-        if (html) expandedEntrypoints.push(...this._sniffJS(html.toString()))
+        const htmlPath = resolve('/', entrypoint)
+        const html = await this._drive.get(htmlPath)
+        if (html) {
+          const sniffedJS = this._sniffJS(html.toString()).map((e) =>
+            resolve(dirname(htmlPath), e)
+          )
+          expandedEntrypoints.push(...sniffedJS)
+        }
       } else {
         expandedEntrypoints.push(entrypoint)
       }
