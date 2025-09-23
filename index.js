@@ -7,35 +7,34 @@ class DriveAnalyzer extends ReadyResource {
   static META = 0
   static DATA = 1
 
-  constructor (drive) {
+  constructor(drive) {
     super()
     this._drive = drive
     this._meta = new Set()
     this._data = new Set()
   }
 
-  async _open () {
+  async _open() {
     await this._drive.ready()
   }
 
-  async _close () {
-  }
+  async _close() {}
 
-  _isJS (path) {
+  _isJS(path) {
     return extname(path) === '.js' || extname(path) === '.mjs'
   }
 
-  _isHTML (path) {
+  _isHTML(path) {
     return extname(path) === '.html'
   }
 
-  _isCustomScheme (str) {
+  _isCustomScheme(str) {
     return /^[a-z][a-z0-9]+:/i.test(str)
   }
 
-  _sniffJS (src) {
-    const s1 = src.match(/"[^"]+"/ig)
-    const s2 = src.match(/'[^']+'/ig)
+  _sniffJS(src) {
+    const s1 = src.match(/"[^"]+"/gi)
+    const s2 = src.match(/'[^']+'/gi)
 
     const entries = []
 
@@ -55,22 +54,26 @@ class DriveAnalyzer extends ReadyResource {
       }
     }
 
-    return entries.filter(e => !this._isCustomScheme(e))
+    return entries.filter((e) => !this._isCustomScheme(e))
   }
 
-  async _analyzeEntrypoint (entrypoint) {
+  async _analyzeEntrypoint(entrypoint) {
     const pearShake = new PearShake(this._drive, [entrypoint])
     const files = await pearShake.run()
     for (const key of files) {
-      const entry = await this._drive.entry(key, { onseq: (seq) => this.capture(seq, this.constructor.META) })
+      const entry = await this._drive.entry(key, {
+        onseq: (seq) => this.capture(seq, this.constructor.META)
+      })
       const blob = entry.value.blob
       const range = [blob.blockLength, blob.blockOffset]
       this.capture(range)
     }
   }
 
-  async _analyzeAsset (asset) {
-    const entry = await this._drive.entry(asset, { onseq: (seq) => this.capture(seq, this.constructor.META) })
+  async _analyzeAsset(asset) {
+    const entry = await this._drive.entry(asset, {
+      onseq: (seq) => this.capture(seq, this.constructor.META)
+    })
     if (entry) {
       const blob = entry.value.blob
       const range = [blob.blockLength, blob.blockOffset]
@@ -82,7 +85,7 @@ class DriveAnalyzer extends ReadyResource {
     }
   }
 
-  async _extractJSFromHTML (entrypoints) {
+  async _extractJSFromHTML(entrypoints) {
     const expandedEntrypoints = []
     for (const entrypoint of entrypoints) {
       if (this._isHTML(entrypoint)) {
@@ -95,26 +98,26 @@ class DriveAnalyzer extends ReadyResource {
     return expandedEntrypoints
   }
 
-  async analyze (entrypoints = [], assets = []) {
+  async analyze(entrypoints = [], assets = []) {
     this._meta.clear()
     this._data.clear()
 
     entrypoints = await this._extractJSFromHTML(entrypoints)
 
-    for await (const entrypoint of entrypoints.map(e => resolve('/', e))) {
+    for await (const entrypoint of entrypoints.map((e) => resolve('/', e))) {
       if (entrypoint && this._isJS(entrypoint)) {
         await this._analyzeEntrypoint(entrypoint)
       }
     }
 
-    for (const asset of assets.map(e => resolve('/', e))) {
+    for (const asset of assets.map((e) => resolve('/', e))) {
       await this._analyzeAsset(asset)
     }
 
     return this._encode()
   }
 
-  capture (seq, core = this.constructor.DATA) {
+  capture(seq, core = this.constructor.DATA) {
     if (Array.isArray(seq)) {
       const [blockLength, blockOffset] = seq
       for (let i = 0; i < blockLength; i++) this.capture(i + blockOffset)
@@ -124,40 +127,49 @@ class DriveAnalyzer extends ReadyResource {
     }
   }
 
-  _encode () { return { meta: encode(this._meta), data: encode(this._data) } }
+  _encode() {
+    return { meta: encode(this._meta), data: encode(this._data) }
+  }
 
-  static decode (meta, data) { return { meta: decode(meta), data: decode(data) } }
+  static decode(meta, data) {
+    return { meta: decode(meta), data: decode(data) }
+  }
 }
 
 // delta encoding
 
-function encode (set) {
+function encode(set) {
   const array = [...set]
   array.sort((a, b) => a - b)
-  return array.map((n, i) => {
-    if (i === 0) return n
-    return n - array[i - 1]
-  }).filter((n, i) => {
-    return i === 0 || n > 0
-  })
+  return array
+    .map((n, i) => {
+      if (i === 0) return n
+      return n - array[i - 1]
+    })
+    .filter((n, i) => {
+      return i === 0 || n > 0
+    })
 }
 
 // delta decoding
 
-function decode (array) {
-  const { ranges } = array.reduce(({ ranges, sum }, n, i) => {
-    if (i === 0) {
-      ranges.push({ start: n, end: n + 1 })
-      return { ranges, sum: n }
-    }
+function decode(array) {
+  const { ranges } = array.reduce(
+    ({ ranges, sum }, n, i) => {
+      if (i === 0) {
+        ranges.push({ start: n, end: n + 1 })
+        return { ranges, sum: n }
+      }
 
-    sum += n
+      sum += n
 
-    if (n === 1) ranges[ranges.length - 1].end += 1
-    else ranges.push({ start: sum, end: sum + 1 })
+      if (n === 1) ranges[ranges.length - 1].end += 1
+      else ranges.push({ start: sum, end: sum + 1 })
 
-    return { ranges, sum }
-  }, { ranges: [], sum: 0 })
+      return { ranges, sum }
+    },
+    { ranges: [], sum: 0 }
+  )
 
   return ranges
 }
