@@ -93,7 +93,9 @@ class DriveAnalyzer extends ReadyResource {
         const htmlPath = resolve('/', entrypoint)
         const html = await this._drive.get(htmlPath)
         if (html) {
-          const sniffedJS = this._sniffJS(html.toString()).map(e => resolve(dirname(htmlPath), e))
+          const sniffedJS = this._sniffJS(html.toString()).map((e) =>
+            resolve(dirname(htmlPath), e)
+          )
           expandedEntrypoints.push(...sniffedJS)
         }
       } else {
