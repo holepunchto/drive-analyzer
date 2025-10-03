@@ -13,6 +13,7 @@ class DriveAnalyzer extends ReadyResource {
     this._drive = drive
     this._meta = new Set()
     this._data = new Set()
+    this._skips = []
   }
 
   async _open() {
@@ -58,9 +59,9 @@ class DriveAnalyzer extends ReadyResource {
     return entries.filter((e) => !this._isCustomScheme(e))
   }
 
-  async _analyzeEntrypoint(entrypoint) {
+  async _analyzeEntrypoint(entrypoint, opts = {}) {
     const pearShake = new PearShake(this._drive, [entrypoint])
-    const files = await pearShake.run()
+    const { files, skips } = await pearShake.run({ defer: opts.defer })
     for (const key of files) {
       const entry = await this._drive.entry(key, {
         onseq: (seq) => this.capture(seq, this.constructor.META)
@@ -69,6 +70,7 @@ class DriveAnalyzer extends ReadyResource {
       const range = [blob.blockLength, blob.blockOffset]
       this.capture(range)
     }
+    this._skips.push(...skips)
   }
 
   async _analyzeAsset(asset) {
@@ -105,15 +107,16 @@ class DriveAnalyzer extends ReadyResource {
     return expandedEntrypoints
   }
 
-  async analyze(entrypoints = [], assets = []) {
+  async analyze(entrypoints = [], assets = [], opts = {}) {
     this._meta.clear()
     this._data.clear()
+    this._skips = []
 
     entrypoints = await this._extractJSFromHTML(entrypoints)
 
     for await (const entrypoint of entrypoints.map((e) => resolve('/', e))) {
       if (entrypoint && this._isJS(entrypoint)) {
-        await this._analyzeEntrypoint(entrypoint)
+        await this._analyzeEntrypoint(entrypoint, { defer: opts.defer })
       }
     }
 
@@ -121,7 +124,7 @@ class DriveAnalyzer extends ReadyResource {
       await this._analyzeAsset(asset)
     }
 
-    return this._encode()
+    return { warmup: this._encode(), skips: this._skips }
   }
 
   capture(seq, core = this.constructor.DATA) {
