@@ -61,7 +61,10 @@ class DriveAnalyzer extends ReadyResource {
 
   async _analyzeEntrypoint(entrypoint, opts = {}) {
     const pearShake = new PearShake(this._drive, [entrypoint])
-    const { files, skips } = await pearShake.run({ defer: opts.defer })
+    const { files, skips } =
+      !opts.files || !opts.skips
+        ? await pearShake.run({ defer: opts.defer })
+        : opts
     for (const key of files) {
       const entry = await this._drive.entry(key, {
         onseq: (seq) => this.capture(seq, this.constructor.META)
@@ -116,7 +119,11 @@ class DriveAnalyzer extends ReadyResource {
 
     for await (const entrypoint of entrypoints.map((e) => resolve('/', e))) {
       if (entrypoint && this._isJS(entrypoint)) {
-        await this._analyzeEntrypoint(entrypoint, { defer: opts.defer })
+        await this._analyzeEntrypoint(entrypoint, {
+          defer: opts.defer,
+          files: opts.files,
+          skips: opts.skips
+        })
       }
     }
 
