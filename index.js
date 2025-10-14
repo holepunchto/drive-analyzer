@@ -113,6 +113,7 @@ class DriveAnalyzer extends ReadyResource {
     this._skips = []
 
     entrypoints = await this._extractJSFromHTML(entrypoints)
+    entrypoints = [...new Set(entrypoints)]
 
     for await (const entrypoint of entrypoints.map((e) => resolve('/', e))) {
       if (entrypoint && this._isJS(entrypoint)) {
