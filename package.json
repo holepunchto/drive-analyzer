@@ -1,6 +1,6 @@
 {
   "name": "drive-analyzer",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Static analysis of a Hyperdrive bundle",
   "main": "index.js",
   "files": [
